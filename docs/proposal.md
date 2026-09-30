@@ -51,6 +51,7 @@ erDiagram
 | GET | /api/v1/reviews/{reviewId} | public | get one review |
 | PATCH | /api/v1/reviews/{reviewId} | user | update a review |
 | DELETE | /api/v1/reviews/{reviewId} | user | delete a review |
+| GET | /api/v1/users/me/reviews | user | list all reviews created by the logged-in user |
 
 ## 5. Technical choices
 - **Database host:**Supabase because it is easily accessible
