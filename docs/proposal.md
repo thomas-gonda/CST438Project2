@@ -54,7 +54,7 @@ erDiagram
 | GET | /api/v1/users/me/reviews | user | list all reviews created by the logged-in user |
 
 ## 5. Technical choices
-- **Database host:**Supabase because it is easily accessible
+- **Database host:** Supabase because it is easily accessible
 - **OAuth2 provider:** Google
 - **Repo layout:** Split because it will make sure we are only touching one component at a time.
 
