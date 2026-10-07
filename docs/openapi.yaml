@@ -283,6 +283,62 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/v1/users:
+    get:
+      tags: [ Users ]
+      operationId: listUsers
+      summary: List all users
+      description: Admin only.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: One page of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/users/{userId}:
+    get:
+      tags: [ Users ]
+      operationId: getUser
+      summary: Get one user
+      description: Admin only.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /api/v1/users/me/reviews:
     get:
       tags: [Users, Reviews]
@@ -481,6 +537,17 @@ components:
     Role:
       type: string
       enum: [USER, ADMIN]
+
+    UserPage:
+      type: object
+      required: [ content, page ]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        page:
+          $ref: '#/components/schemas/PageMeta'
 
     PageMeta:
       description: Spring Data PagedModel metadata.
