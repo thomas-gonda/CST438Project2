@@ -33,12 +33,63 @@ tags:
     description: A user's own workouts
   - name: Exercises
     description: The shared exercise catalog
+  - name: Games
+    description: The public game catalog and admin game management
   - name: Users
     description: The signed-in user's own account
   - name: Admin
     description: Admin-only user management
 
 paths:
+  /api/v1/games:
+    get:
+      tags: [Games]
+      operationId: listGames
+      summary: List available games
+      security: []
+      responses:
+        '200':
+          description: Available games, or an empty array when none have been added
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Game'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Games]
+      operationId: createGame
+      summary: Add a game to the catalog
+      security:
+        - basicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameCreate'
+      responses:
+        '201':
+          description: Game created
+          headers:
+            Location:
+              description: URL of the new game
+              schema:
+                type: string
+                example: /api/v1/games/1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /api/v1/workouts:
     get:
       tags: [Workouts]
@@ -332,6 +383,10 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: JWT from the OAuth2 Authorization Code + PKCE flow (with Google, send the ID token; Google's access_token is opaque).
+    basicAuth:
+      type: http
+      scheme: basic
+      description: Local admin authentication used by the game creation endpoint until OAuth is connected.
 
   parameters:
     WorkoutId:
@@ -361,6 +416,49 @@ components:
         default: 20
 
   schemas:
+    Game:
+      type: object
+      required: [id, name, publisher, category, price]
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          example: 1
+        name:
+          type: string
+          minLength: 1
+          example: Stardew Valley
+        publisher:
+          type: string
+          minLength: 1
+          example: ConcernedApe
+        category:
+          type: string
+          minLength: 1
+          example: Simulation
+        price:
+          type: number
+          minimum: 0
+          example: 14.99
+
+    GameCreate:
+      type: object
+      required: [name, publisher, category, price]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        publisher:
+          type: string
+          minLength: 1
+        category:
+          type: string
+          minLength: 1
+        price:
+          type: number
+          minimum: 0
+
     MuscleGroup:
       type: string
       enum: [CHEST, BACK, LEGS, SHOULDERS, ARMS, CORE, CARDIO]
