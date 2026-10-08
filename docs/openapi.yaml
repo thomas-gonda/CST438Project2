@@ -6,17 +6,17 @@
 openapi: 3.0.3
 
 info:
-  title: Workout Tracker API
+  title: GameReview API
   version: 1.0.0
   description: |
-    Example contract for a workout tracker. Users log workouts made of exercises.
+    Allows users to review and rate games that the admin adds, Anybody who plays video games, It would mean users could review and rate games on the client application.
     Every error uses RFC 9457 Problem Details (see components/schemas/Problem).
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
   contact:
-    name: Team 00
-    url: https://github.com/OWNER/REPO
+    name: Team 03
+    url: https://github.com/thomas-gonda/CST438Project2
 
 servers:
   - url: http://localhost:8080
@@ -29,16 +29,12 @@ security:
   - bearerAuth: []
 
 tags:
-  - name: Workouts
-    description: A user's own workouts
-  - name: Exercises
-    description: The shared exercise catalog
   - name: Games
-    description: The public game catalog and admin game management
+    description: Public game catalog and admin game management
+  - name: Reviews
+    description: Game reviews and ratings
   - name: Users
-    description: The signed-in user's own account
-  - name: Admin
-    description: Admin-only user management
+    description: Operations for the signed-in user
 
 paths:
   /api/v1/games:
@@ -97,203 +93,209 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
-  /api/v1/workouts:
+  /api/v1/games/{gameId}:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
     get:
-      tags: [Workouts]
-      operationId: listMyWorkouts
-      summary: List my workouts (paginated, sortable)
-      parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/Size'
-        - name: sort
-          in: query
-          description: Field and direction, Spring Pageable style.
-          schema:
-            type: string
-            enum: ['performedOn,desc', 'performedOn,asc']
-            default: 'performedOn,desc'
+      tags: [Games]
+      operationId: getGame
+      summary: Get one game
+      security: []
       responses:
-        '500':
-          $ref: '#/components/responses/InternalError'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '200':
-          description: One page of the caller's workouts
+          description: The game
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WorkoutPage'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    post:
-      tags: [Workouts]
-      operationId: createWorkout
-      summary: Log a workout
+                $ref: '#/components/schemas/Game'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Games]
+      operationId: updateGame
+      summary: Update a game
+      description: Admin only. Send only the fields that should change.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkoutCreate'
+              $ref: '#/components/schemas/GamePatch'
       responses:
+        '200':
+          description: The updated game
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Games]
+      operationId: deleteGame
+      summary: Delete a game
+      description: Admin only.
+      responses:
+        '204':
+          description: Deleted. No response body.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/games/{gameId}/reviews:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+    get:
+      tags: [Reviews]
+      operationId: listReviewsForGame
+      summary: List reviews for one game
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: One page of reviews for the game
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Reviews]
+      operationId: createReviewForGame
+      summary: Create a review for a game
+      description: The authenticated user becomes the owner of the review.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreate'
+      responses:
         '201':
-          description: Created. POST is not idempotent; two calls make two workouts.
+          description: Review created
           headers:
             Location:
-              description: URL of the new workout
+              description: URL of the new review
               schema:
                 type: string
-                example: /api/v1/workouts/42
+                example: /api/v1/reviews/84
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Workout'
+                $ref: '#/components/schemas/Review'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
-  /api/v1/workouts/{workoutId}:
+  /api/v1/reviews/{reviewId}:
     parameters:
-      - $ref: '#/components/parameters/WorkoutId'
+      - $ref: '#/components/parameters/ReviewId'
     get:
-      tags: [Workouts]
-      operationId: getWorkout
-      summary: Get one of my workouts
+      tags: [Reviews]
+      operationId: getReview
+      summary: Get one review
+      security: []
       responses:
-        '500':
-          $ref: '#/components/responses/InternalError'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '200':
-          description: The workout
+          description: The review
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Workout'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    put:
-      tags: [Workouts]
-      operationId: replaceWorkout
-      summary: Replace a workout (idempotent)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WorkoutCreate'
-      responses:
-        '500':
-          $ref: '#/components/responses/InternalError'
-        '200':
-          description: The replaced workout
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Workout'
+                $ref: '#/components/schemas/Review'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
     patch:
-      tags: [Workouts]
-      operationId: updateWorkout
-      summary: Change some fields of a workout
+      tags: [Reviews]
+      operationId: updateReview
+      summary: Update one of my reviews
+      description: Authenticated users may update reviews they own.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkoutPatch'
+              $ref: '#/components/schemas/ReviewPatch'
       responses:
-        '500':
-          $ref: '#/components/responses/InternalError'
         '200':
-          description: The updated workout
+          description: The updated review
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Workout'
+                $ref: '#/components/schemas/Review'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-    delete:
-      tags: [Workouts]
-      operationId: deleteWorkout
-      summary: Delete a workout
-      responses:
         '500':
           $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Reviews]
+      operationId: deleteReview
+      summary: Delete one of my reviews
+      description: Authenticated users may delete reviews they own.
+      responses:
+        '204':
+          description: Deleted. No response body.
         '400':
           $ref: '#/components/responses/BadRequest'
-        '204':
-          description: Deleted. No body.
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /api/v1/exercises:
-    get:
-      tags: [Exercises]
-      operationId: listExercises
-      summary: Browse the exercise catalog (public, filterable)
-      security: []          # public: no token needed
-      parameters:
-        - name: muscleGroup
-          in: query
-          description: Only exercises for this muscle group
-          schema:
-            $ref: '#/components/schemas/MuscleGroup'
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/Size'
-      responses:
         '500':
           $ref: '#/components/responses/InternalError'
-        '200':
-          description: One page of exercises
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExercisePage'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /api/v1/users/me:
-    delete:
-      tags: [Users]
-      operationId: deleteMyAccount
-      summary: Delete my own account and ALL my data
-      description: Any signed-in user. Deletes the user row and everything they own (workouts, custom exercises).
-      responses:
-        '500':
-          $ref: '#/components/responses/InternalError'
-        '204':
-          description: Deleted. The token is now useless.
-        '401':
-          $ref: '#/components/responses/Unauthorized'
 
   /api/v1/users:
     get:
-      tags: [Admin]
+      tags: [ Users ]
       operationId: listUsers
-      summary: List all users (admin only)
+      summary: List all users
+      description: Admin only.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
-        '500':
-          $ref: '#/components/responses/InternalError'
         '200':
           description: One page of users
           content:
@@ -306,23 +308,23 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-
-  /api/v1/users/{userId}:
-    parameters:
-      - name: userId
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int64
-          example: 7
-    get:
-      tags: [Admin]
-      operationId: getUser
-      summary: View one user (admin only)
-      responses:
         '500':
           $ref: '#/components/responses/InternalError'
+
+  /api/v1/users/{userId}:
+    get:
+      tags: [ Users ]
+      operationId: getUser
+      summary: Get one user
+      description: Admin only.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
         '200':
           description: The user
           content:
@@ -337,51 +339,30 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-    patch:
-      tags: [Admin]
-      operationId: updateUserRole
-      summary: Grant or revoke admin (admin only)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserPatch'
-      responses:
         '500':
           $ref: '#/components/responses/InternalError'
+
+  /api/v1/users/me/reviews:
+    get:
+      tags: [Users, Reviews]
+      operationId: listMyReviews
+      summary: List my reviews
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
         '200':
-          description: The updated user
+          description: One page of reviews created by the authenticated user
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/ReviewPage'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      tags: [Admin]
-      operationId: deleteUser
-      summary: Delete a user and all their data (admin only)
-      description: Requires the ADMIN role. A USER token gets 403.
-      responses:
         '500':
           $ref: '#/components/responses/InternalError'
-        '204':
-          description: Deleted
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
 
 components:
   securitySchemes:
@@ -396,14 +377,22 @@ components:
       description: Local admin authentication used by the game creation endpoint until OAuth is connected.
 
   parameters:
-    WorkoutId:
-      name: workoutId
+    GameId:
+      name: gameId
       in: path
       required: true
       schema:
         type: integer
         format: int64
         example: 42
+    ReviewId:
+      name: reviewId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        example: 84
     Page:
       name: page
       in: query
@@ -449,17 +438,6 @@ components:
           minimum: 0
           example: 14.99
 
-    GamePage:
-      type: object
-      required: [content, page]
-      properties:
-        content:
-          type: array
-          items:
-            $ref: '#/components/schemas/Game'
-        page:
-          $ref: '#/components/schemas/PageMeta'
-
     GameCreate:
       type: object
       required: [name, publisher, category, price]
@@ -475,118 +453,103 @@ components:
           minLength: 1
         price:
           type: number
+          format: double
           minimum: 0
 
-    MuscleGroup:
-      type: string
-      enum: [CHEST, BACK, LEGS, SHOULDERS, ARMS, CORE, CARDIO]
-
-    Workout:
+    GamePatch:
       type: object
-      required: [id, performedOn, exercises]
+      minProperties: 1
+      properties:
+        name:
+          type: string
+        publisher:
+          type: string
+        category:
+          type: string
+        price:
+          type: number
+          format: double
+
+    Review:
+      type: object
+      required: [id, comment, rating, reviewDate, userId, gameId]
       properties:
         id:
           type: integer
           format: int64
           readOnly: true
+          example: 84
+        comment:
+          type: string
+          example: Great exploration and world design.
+        rating:
+          type: number
+          format: float
+          example: 4.5
+        reviewDate:
+          type: string
+          format: date
+          readOnly: true
+          example: '2026-10-06'
+        userId:
+          type: integer
+          format: int64
+          readOnly: true
+          example: 7
+        gameId:
+          type: integer
+          format: int64
+          readOnly: true
           example: 42
-        performedOn:
-          type: string
-          format: date
-          example: '2026-10-01'
-        durationMin:
-          type: integer
-          minimum: 1
-          nullable: true
-          example: 45
-        notes:
-          type: string
-          maxLength: 500
-          nullable: true
-          example: Felt strong today
-        exercises:
-          type: array
-          items:
-            $ref: '#/components/schemas/WorkoutExercise'
 
-    WorkoutCreate:
-      description: Body for POST and PUT. PUT replaces every field.
+    ReviewCreate:
+      description: userId comes from the authenticated user, gameId comes from the path, and reviewDate is assigned by the server.
       type: object
-      required: [performedOn, exercises]
+      required: [comment, rating]
       properties:
-        performedOn:
+        comment:
           type: string
-          format: date
-          example: '2026-10-01'
-        durationMin:
-          type: integer
-          minimum: 1
-          nullable: true
-          example: 45
-        notes:
-          type: string
-          maxLength: 500
-          nullable: true
-        exercises:
-          type: array
-          minItems: 1
-          items:
-            $ref: '#/components/schemas/WorkoutExercise'
+          example: Great exploration and world design.
+        rating:
+          type: number
+          format: float
+          example: 4.5
 
-    WorkoutPatch:
-      description: Body for PATCH. Send only the fields you want to change.
+    ReviewPatch:
       type: object
       minProperties: 1
       properties:
-        durationMin:
-          type: integer
-          minimum: 1
-          nullable: true
-        notes:
+        comment:
           type: string
-          maxLength: 500
-          nullable: true
-
-    WorkoutExercise:
-      type: object
-      required: [exerciseId, sets, reps]
-      properties:
-        exerciseId:
-          type: integer
-          format: int64
-          example: 7
-        sets:
-          type: integer
-          minimum: 1
-          example: 3
-        reps:
-          type: integer
-          minimum: 1
-          example: 10
-        weightKg:
+        rating:
           type: number
-          format: double
-          nullable: true
-          example: 60.0
+          format: float
 
-    Exercise:
+    User:
       type: object
-      required: [id, name, muscleGroup]
+      required: [id, email, displayName, role]
       properties:
         id:
           type: integer
           format: int64
+          readOnly: true
           example: 7
-        name:
+        email:
           type: string
-          example: Back Squat
-        muscleGroup:
-          $ref: '#/components/schemas/MuscleGroup'
+          format: email
+          example: sam@csumb.edu
+        displayName:
+          type: string
+          example: Sam Otter
+        role:
+          $ref: '#/components/schemas/Role'
+
+    Role:
+      type: string
+      enum: [USER, ADMIN]
 
     PageMeta:
-      description: >-
-        Spring Data's PagedModel shape. Turn it on with
-        spring.data.web.pageable.serialization-mode=via_dto in application.properties.
+      description: Spring Data PagedModel metadata.
       type: object
       required: [size, number, totalElements, totalPages]
       properties:
@@ -603,62 +566,10 @@ components:
         totalPages:
           type: integer
           example: 3
-
-    WorkoutPage:
-      type: object
-      required: [content, page]
-      properties:
-        content:
-          type: array
-          items:
-            $ref: '#/components/schemas/Workout'
-        page:
-          $ref: '#/components/schemas/PageMeta'
-
-    ExercisePage:
-      type: object
-      required: [content, page]
-      properties:
-        content:
-          type: array
-          items:
-            $ref: '#/components/schemas/Exercise'
-        page:
-          $ref: '#/components/schemas/PageMeta'
-
-    User:
-      type: object
-      required: [id, email, displayName, role]
-      properties:
-        id:
-          type: integer
-          format: int64
-          example: 7
-        email:
-          type: string
-          format: email
-          example: sam@csumb.edu
-        displayName:
-          type: string
-          example: Sam Otter
-        role:
-          $ref: '#/components/schemas/Role'
-
-    Role:
-      type: string
-      enum: [USER, ADMIN]
-
-    UserPatch:
-      description: Body for PATCH /api/v1/users/{userId}. Today the only editable field is the role.
-      type: object
-      required: [role]
-      properties:
-        role:
-          $ref: '#/components/schemas/Role'
-
+          
     UserPage:
       type: object
-      required: [content, page]
+      required: [ content, page ]
       properties:
         content:
           type: array
@@ -667,8 +578,30 @@ components:
         page:
           $ref: '#/components/schemas/PageMeta'
 
+    GamePage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Game'
+        page:
+          $ref: '#/components/schemas/PageMeta'
+
+    ReviewPage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Review'
+        page:
+          $ref: '#/components/schemas/PageMeta'
+
     Problem:
-      description: RFC 9457 Problem Details. The ONE error body every endpoint returns.
+      description: RFC 9457 Problem Details. The common error body returned by the API.
       type: object
       required: [title, status]
       properties:
@@ -683,10 +616,10 @@ components:
           example: 404
         detail:
           type: string
-          example: Workout 42 not found
+          example: Game 42 not found
         instance:
           type: string
-          example: /api/v1/workouts/42
+          example: /api/v1/games/42
 
   responses:
     BadRequest:
@@ -709,7 +642,7 @@ components:
             title: Unauthorized
             status: 401
     Forbidden:
-      description: Valid token, but not allowed (for example, not an admin)
+      description: Valid token, but the caller is not allowed to perform this operation
       content:
         application/problem+json:
           schema:
@@ -718,7 +651,7 @@ components:
             title: Forbidden
             status: 403
     NotFound:
-      description: Doesn't exist, or belongs to someone else
+      description: The requested resource does not exist or is not visible to the caller
       content:
         application/problem+json:
           schema:
@@ -726,9 +659,9 @@ components:
           example:
             title: Not Found
             status: 404
-            detail: Workout 42 not found
+            detail: Resource not found
     InternalError:
-      description: Unexpected server error. Your app still needs to show something useful.
+      description: Unexpected server error
       content:
         application/problem+json:
           schema:
