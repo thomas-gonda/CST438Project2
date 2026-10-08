@@ -41,27 +41,32 @@ paths:
     get:
       tags: [Games]
       operationId: listGames
-      summary: List all games
+      summary: List available games with pagination
+      description: |
+        Public endpoint returning games ordered by ID ascending.
+        Page-based pagination limits response size and lets clients request
+        a specific page. Page numbers start at zero.
+        An empty catalog or a page beyond the available results returns
+        an empty content array with pagination metadata.
       security: []
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
         '200':
-          description: One page of games
+          description: One page of games with pagination metadata
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/GamePage'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '500':
-          $ref: '#/components/responses/InternalError'
     post:
       tags: [Games]
       operationId: createGame
-      summary: Add a new game
-      description: Admin only.
+      summary: Add a game to the catalog
+      security:
+        - basicAuth: []
       requestBody:
         required: true
         content:
@@ -76,7 +81,7 @@ paths:
               description: URL of the new game
               schema:
                 type: string
-                example: /api/v1/games/42
+                example: /api/v1/games/1
           content:
             application/json:
               schema:
@@ -87,8 +92,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '500':
-          $ref: '#/components/responses/InternalError'
 
   /api/v1/games/{gameId}:
     parameters:
@@ -367,7 +370,11 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT established through Google OAuth2 Authorization Code with PKCE.
+      description: JWT from the OAuth2 Authorization Code + PKCE flow (with Google, send the ID token; Google's access_token is opaque).
+    basicAuth:
+      type: http
+      scheme: basic
+      description: Local admin authentication used by the game creation endpoint until OAuth is connected.
 
   parameters:
     GameId:
@@ -413,20 +420,23 @@ components:
           type: integer
           format: int64
           readOnly: true
-          example: 42
+          example: 1
         name:
           type: string
-          example: 'The Legend of Zelda: Breath of the Wild'
+          minLength: 1
+          example: Stardew Valley
         publisher:
           type: string
-          example: Nintendo
+          minLength: 1
+          example: ConcernedApe
         category:
           type: string
-          example: Action-adventure
+          minLength: 1
+          example: Simulation
         price:
           type: number
-          format: double
-          example: 59.99
+          minimum: 0
+          example: 14.99
 
     GameCreate:
       type: object
@@ -434,17 +444,17 @@ components:
       properties:
         name:
           type: string
-          example: 'The Legend of Zelda: Breath of the Wild'
+          minLength: 1
         publisher:
           type: string
-          example: Nintendo
+          minLength: 1
         category:
           type: string
-          example: Action-adventure
+          minLength: 1
         price:
           type: number
           format: double
-          example: 59.99
+          minimum: 0
 
     GamePatch:
       type: object
@@ -538,17 +548,6 @@ components:
       type: string
       enum: [USER, ADMIN]
 
-    UserPage:
-      type: object
-      required: [ content, page ]
-      properties:
-        content:
-          type: array
-          items:
-            $ref: '#/components/schemas/User'
-        page:
-          $ref: '#/components/schemas/PageMeta'
-
     PageMeta:
       description: Spring Data PagedModel metadata.
       type: object
@@ -567,6 +566,17 @@ components:
         totalPages:
           type: integer
           example: 3
+          
+    UserPage:
+      type: object
+      required: [ content, page ]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        page:
+          $ref: '#/components/schemas/PageMeta'
 
     GamePage:
       type: object
