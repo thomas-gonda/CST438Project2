@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -79,6 +81,46 @@ public class GameController {
 
         return ResponseEntity.created(
                 URI.create("/api/v1/games/" + game.getId())).body(game);
+    }
+
+    /**
+     * Updates a game for an administrator.
+     *
+     * @param request the validated game details
+     * @return the updated game
+     */
+    @PatchMapping("/{gameId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Game> updateGame(
+            @PathVariable Long gameId,
+            @RequestBody GameUpdateRequest request) {
+
+        if(request == null){
+            return ResponseEntity.badRequest().build();
+        }
+
+        if((request.name() != null && request.name().isBlank())
+                || (request.publisher() != null && request.publisher().isBlank())
+                || (request.category() != null && request.category().isBlank())
+                || (request.price() != null && request.price().signum() < 0)){
+            return ResponseEntity.badRequest().build();
+        }
+
+        return gameRepository.update(
+                        gameId,
+                        request.name(),
+                        request.publisher(),
+                        request.category(),
+                        request.price())
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    private record GameUpdateRequest(
+            String name,
+            String publisher,
+            String category,
+            BigDecimal price) {
     }
 
     /**
