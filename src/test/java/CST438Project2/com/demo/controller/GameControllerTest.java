@@ -55,7 +55,7 @@ class GameControllerTest {
 
         mockMvc.perform(get("/api/v1/games"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.name == 'Reviewable Game')]").isNotEmpty());
+                .andExpect(jsonPath("$.content[?(@.name == 'Reviewable Game')]").isNotEmpty());
     }
 
     @Test

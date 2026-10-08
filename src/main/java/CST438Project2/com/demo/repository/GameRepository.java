@@ -58,4 +58,41 @@ public class GameRepository {
                         resultSet.getString("category"),
                         resultSet.getBigDecimal("price")));
     }
+
+    /**
+     * Retrieves one page of games in a consistent ID order.
+     *
+     * @param page zero-based page number
+     * @param size maximum number of games per page
+     * @return the games on the requested page
+     */
+    public List<Game> findPage(int page, int size) {
+        long offset = (long) page * size;
+
+        return jdbcTemplate.query("""
+                    SELECT "id", "name", "publisher", "category", "price"
+                    FROM "GAME"
+                    ORDER BY "id"
+                    LIMIT ? OFFSET ?
+                    """,
+                (resultSet, rowNum) -> new Game(
+                        resultSet.getLong("id"),
+                        resultSet.getString("name"),
+                        resultSet.getString("publisher"),
+                        resultSet.getString("category"),
+                        resultSet.getBigDecimal("price")),
+                size,
+                offset);
+    }
+
+    /**
+     * Counts all games in the catalog.
+     *
+     * @return the total number of games
+     */
+    public long count() {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM \"GAME\"",
+                Long.class);
+    }
 }
