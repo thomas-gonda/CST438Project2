@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class GameRepository {
@@ -83,6 +84,71 @@ public class GameRepository {
                         resultSet.getBigDecimal("price")),
                 size,
                 offset);
+    }
+
+    /**
+     * Retrieves one game from ID .
+     *
+     * @param id games id number
+     * @return the game with the matching id number
+     */
+
+    public Optional<Game> findById(Long id) {
+        return jdbcTemplate.query("""
+            SELECT "id", "name", "publisher", "category", "price"
+            FROM "GAME" WHERE "id" = ?
+            """, (rs, row) -> new Game(
+                        rs.getLong("id"),
+                        rs.getString("name"),
+                        rs.getString("publisher"),
+                        rs.getString("category"),
+                        rs.getBigDecimal("price")), id)
+                .stream().findFirst();
+    }
+
+    public Optional<Game> update(
+            Long id,
+            String name,
+            String publisher,
+            String category,
+            BigDecimal price) {
+
+        Optional<Game> existing = findById(id);
+
+        if(existing.isEmpty()){
+            return Optional.empty();
+        }
+
+        Game game = existing.get();
+
+        if(name != null){
+            game.setName(name.trim());
+        }
+
+        if(publisher != null){
+            game.setPublisher(publisher.trim());
+        }
+
+        if(category != null){
+            game.setCategory(category.trim());
+        }
+
+        if(price != null){
+            game.setPrice(price);
+        }
+
+        jdbcTemplate.update("""
+            UPDATE "GAME"
+            SET "name" = ?, "publisher" = ?, "category" = ?, "price" = ?
+            WHERE "id" = ?
+            """,
+                game.getName(),
+                game.getPublisher(),
+                game.getCategory(),
+                game.getPrice(),
+                id);
+
+        return Optional.of(game);
     }
 
     /**
