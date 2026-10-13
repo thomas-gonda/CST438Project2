@@ -11,12 +11,15 @@ import CST438Project2.com.demo.model.Game;
 import CST438Project2.com.demo.repository.GameRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -207,5 +210,62 @@ class GameControllerTest {
         Game unchanged = gameRepository.findById(id).orElseThrow();
 
         assertEquals("Valid", unchanged.getName());
+    }
+
+    @Test
+    void adminCanDeleteGameAndItIsRemovedFromAvailableGamesList() throws Exception {
+        Game game = gameRepository.save(new Game(
+                null,
+                "Game To Delete",
+                "Publisher",
+                "Action",
+                new BigDecimal("20.00")
+        ));
+
+        mockMvc.perform(delete("/api/v1/games/{id}", game.getId())
+                        .with(httpBasic("admin", "admin-password")))
+                .andExpect(status().isNoContent());
+
+        assertFalse(gameRepository.findById(game.getId()).isPresent());
+
+        mockMvc.perform(get("/api/v1/games").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.id == "
+                        + game.getId() + ")]").isEmpty());
+    }
+
+    @Test
+    void unauthenticatedRequestsCannotDeleteGames() throws Exception {
+        mockMvc.perform(delete("/api/v1/games/1"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void authenticatedNonAdminRequestsCannotDeleteGames() throws Exception {
+        mockMvc.perform(delete("/api/v1/games/1")
+                        .with(httpBasic("user", "user-password")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deletingMissingGameReturnsProblemDetailsNotFound() throws Exception {
+        mockMvc.perform(delete("/api/v1/games/9223372036854775807")
+                        .with(httpBasic("admin", "admin-password")))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(
+                        MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.detail")
+                        .value("Game 9223372036854775807 was not found."));
+    }
+
+    @Test
+    void invalidGameIdReturnsBadRequest() throws Exception {
+        mockMvc.perform(delete("/api/v1/games/not-a-number")
+                        .with(httpBasic("admin", "admin-password")))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(
+                        MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(400));
     }
 }

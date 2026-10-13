@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -114,6 +115,25 @@ public class GameController {
                         request.price())
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Deletes a game for an administrator.
+     *
+     * @param gameId the game to delete
+     * @return no content when deleted, or a problem response when it is missing
+     */
+    @DeleteMapping("/{gameId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> deleteGame(@PathVariable Long gameId) {
+        if (gameRepository.deleteById(gameId)) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                ProblemDetail.forStatusAndDetail(
+                        HttpStatus.NOT_FOUND,
+                        "Game " + gameId + " was not found."));
     }
 
     private record GameUpdateRequest(
