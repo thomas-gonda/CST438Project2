@@ -6,7 +6,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
-import org.springframework.dao.DataRetrievalFailureException;
 
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -60,22 +59,6 @@ public class ReviewRepository {
                 review.getRating(),
                 review.getUserId(),
                 review.getGameId()
-        );
-    }
-
-    // updates a review's comment and rating in the database
-    public void update(Review review) {
-        String sql = """
-        UPDATE "REVIEW"
-        SET "comment" = ?, "rating" = ?
-        WHERE "id" = ?
-        """;
-
-        jdbcTemplate.update(
-                sql,
-                review.getComment(),
-                review.getRating(),
-                review.getId()
         );
     }
 
