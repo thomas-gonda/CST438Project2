@@ -26,6 +26,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/games", "/hello").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/games").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/games/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/games/*").hasRole("ADMIN")
                         .anyRequest().permitAll())
                 .httpBasic(httpBasic -> { });
         return http.build();

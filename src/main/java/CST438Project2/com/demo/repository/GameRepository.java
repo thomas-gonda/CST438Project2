@@ -152,6 +152,17 @@ public class GameRepository {
     }
 
     /**
+     * Deletes one game from the catalog.
+     *
+     * @param id the game id
+     * @return true when a game was deleted, otherwise false
+     */
+    public boolean deleteById(Long id) {
+        return jdbcTemplate.update(
+                "DELETE FROM \"GAME\" WHERE \"id\" = ?", id) > 0;
+    }
+
+    /**
      * Counts all games in the catalog.
      *
      * @return the total number of games
