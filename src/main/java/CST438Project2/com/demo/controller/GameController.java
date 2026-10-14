@@ -23,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.dao.DataAccessException;
 
 import java.math.BigDecimal;
 import java.net.URI;
@@ -62,6 +63,25 @@ public class GameController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
         return gameService.listGames(page, size);
+    }
+
+    /**
+     * Returns the details of one game.
+     *
+     * @param gameId the game to retrieve
+     * @return the game when found, or a problem response when missing
+     */
+    @GetMapping("/{gameId}")
+    public ResponseEntity<?> getGameById(
+            @PathVariable("gameId") Long gameId) {
+
+        return gameRepository.findById(gameId)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity
+                        .status(HttpStatus.NOT_FOUND)
+                        .body(ProblemDetail.forStatusAndDetail(
+                                HttpStatus.NOT_FOUND,
+                                "Game " + gameId + " was not found.")));
     }
 
     /**
@@ -141,6 +161,16 @@ public class GameController {
             String publisher,
             String category,
             BigDecimal price) {
+    }
+
+    /**
+     * Returns a problem response when a database operation fails.
+     */
+    @ExceptionHandler(DataAccessException.class)
+    public ProblemDetail handleDatabaseError(DataAccessException exception) {
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "An unexpected database error occurred.");
     }
 
     /**
