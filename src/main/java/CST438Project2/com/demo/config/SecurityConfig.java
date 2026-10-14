@@ -23,7 +23,7 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.GET, "/api/v1/games", "/hello").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/games", "/api/v1/games/*", "/hello").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/games").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/games/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/games/*").hasRole("ADMIN")
