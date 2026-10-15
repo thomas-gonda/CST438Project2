@@ -33,6 +33,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableMethodSecurity
@@ -96,10 +99,16 @@ public class SecurityConfig {
      */
     @Bean
     JwtAuthenticationConverter jwtAuthenticationConverter(
-            @Value("${app.oauth2.admin-scope:admin}") String adminScope) {
+            @Value("${app.oauth2.admin-scope:admin}") String adminScope,
+            @Value("${app.oauth2.admin-emails:}") String adminEmails) {
         JwtGrantedAuthoritiesConverter scopeConverter =
                 new JwtGrantedAuthoritiesConverter();
         String adminAuthority = "SCOPE_" + adminScope.trim();
+        Set<String> adminEmailSet = Arrays.stream(adminEmails.split(","))
+                .map(String::trim)
+                .filter(email -> !email.isBlank())
+                .map(email -> email.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toUnmodifiableSet());
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
             Collection<GrantedAuthority> scopeAuthorities =
@@ -114,6 +123,15 @@ public class SecurityConfig {
 
             addRoleAuthorities(jwt, authorities, "roles");
             addRoleAuthorities(jwt, authorities, "role");
+
+            String email = jwt.getClaimAsString("email");
+            Boolean emailVerified = jwt.getClaimAsBoolean("email_verified");
+            if (Boolean.TRUE.equals(emailVerified)
+                    && email != null
+                    && adminEmailSet.contains(email.toLowerCase(Locale.ROOT))) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            }
+
             return authorities;
         });
         return converter;

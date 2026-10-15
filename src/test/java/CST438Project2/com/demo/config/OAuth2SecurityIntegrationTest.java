@@ -27,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "app.oauth2.enabled=true",
         "app.oauth2.issuer-uri=https://issuer.example.test",
         "app.oauth2.hmac-secret=oauth2-test-signing-secret-32-bytes-long",
+        "app.oauth2.admin-emails=admin@example.com",
         "app.auth.basic-enabled=false"
 })
 @AutoConfigureMockMvc
@@ -56,6 +57,17 @@ class OAuth2SecurityIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(gameJson("OAuth User Game")))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void verifiedAdminEmailCanAccessAdminEndpoint() throws Exception {
+        mockMvc.perform(post("/api/v1/games")
+                        .header(HttpHeaders.AUTHORIZATION,
+                                bearerToken("profile", "admin@example.com",
+                                        Instant.now().plusSeconds(300)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(gameJson("Google Admin Game")))
+                .andExpect(status().isCreated());
     }
 
     @Test
@@ -92,19 +104,31 @@ class OAuth2SecurityIntegrationTest {
     }
 
     private static String bearerToken(String scope, Instant expiresAt) {
+        return bearerToken(scope, null, expiresAt);
+    }
+
+    private static String bearerToken(
+            String scope,
+            String email,
+            Instant expiresAt) {
         SecretKey key = new SecretKeySpec(
                 SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         NimbusJwtEncoder encoder = new NimbusJwtEncoder(new ImmutableSecret<>(key));
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        JwtClaimsSet.Builder claimsBuilder = JwtClaimsSet.builder()
                 .issuer(ISSUER)
                 .subject("oauth-test-user")
                 .issuedAt(expiresAt.minusSeconds(60))
                 .expiresAt(expiresAt)
-                .claim("scope", scope)
-                .build();
+                .claim("scope", scope);
+
+        if (email != null) {
+            claimsBuilder.claim("email", email)
+                    .claim("email_verified", true);
+        }
 
         return "Bearer " + encoder.encode(JwtEncoderParameters.from(
-                JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
+                JwsHeader.with(MacAlgorithm.HS256).build(),
+                claimsBuilder.build())).getTokenValue();
     }
 
     private static String gameJson(String name) {
