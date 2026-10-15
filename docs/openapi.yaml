@@ -371,7 +371,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: OAuth 2.0 bearer access token issued by the configured identity provider.
+      description: OAuth 2.0 bearer JWT issued by Auth0.
   parameters:
     GameId:
       name: gameId

@@ -18,6 +18,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -26,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {
         "app.oauth2.enabled=true",
         "app.oauth2.issuer-uri=https://issuer.example.test",
+        "app.oauth2.audience=oauth-test-api",
         "app.oauth2.hmac-secret=oauth2-test-signing-secret-32-bytes-long",
         "app.oauth2.admin-emails=admin@example.com",
         "app.auth.basic-enabled=false"
@@ -66,7 +68,7 @@ class OAuth2SecurityIntegrationTest {
                                 bearerToken("profile", "admin@example.com",
                                         Instant.now().plusSeconds(300)))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(gameJson("Google Admin Game")))
+                        .content(gameJson("Auth0 Admin Game")))
                 .andExpect(status().isCreated());
     }
 
@@ -84,6 +86,17 @@ class OAuth2SecurityIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer not-a-jwt")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(gameJson("Invalid Token Game")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void tokenForAnotherAuth0ApiIsUnauthorized() throws Exception {
+        mockMvc.perform(post("/api/v1/games")
+                        .header(HttpHeaders.AUTHORIZATION,
+                                bearerTokenWithAudience("admin", "another-api",
+                                        Instant.now().plusSeconds(300)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(gameJson("Wrong Audience Game")))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -111,11 +124,27 @@ class OAuth2SecurityIntegrationTest {
             String scope,
             String email,
             Instant expiresAt) {
+        return bearerTokenWithAudience(scope, email, "oauth-test-api", expiresAt);
+    }
+
+    private static String bearerTokenWithAudience(
+            String scope,
+            String audience,
+            Instant expiresAt) {
+        return bearerTokenWithAudience(scope, null, audience, expiresAt);
+    }
+
+    private static String bearerTokenWithAudience(
+            String scope,
+            String email,
+            String audience,
+            Instant expiresAt) {
         SecretKey key = new SecretKeySpec(
                 SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         NimbusJwtEncoder encoder = new NimbusJwtEncoder(new ImmutableSecret<>(key));
         JwtClaimsSet.Builder claimsBuilder = JwtClaimsSet.builder()
                 .issuer(ISSUER)
+                .audience(List.of(audience))
                 .subject("oauth-test-user")
                 .issuedAt(expiresAt.minusSeconds(60))
                 .expiresAt(expiresAt)

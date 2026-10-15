@@ -16,7 +16,10 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -143,6 +146,7 @@ public class SecurityConfig {
      * environments without requiring a network call to an identity provider.
      *
      * @param issuerUri OAuth2 issuer URI
+     * @param audience expected OAuth2 audience
      * @param jwkSetUri OAuth2 JWK set URI
      * @param hmacSecret optional signing secret for local/test use
      * @return a decoder that validates the configured token source
@@ -151,6 +155,7 @@ public class SecurityConfig {
     @ConditionalOnProperty(name = "app.oauth2.enabled", havingValue = "true")
     JwtDecoder jwtDecoder(
             @Value("${app.oauth2.issuer-uri:}") String issuerUri,
+            @Value("${app.oauth2.audience:}") String audience,
             @Value("${app.oauth2.jwk-set-uri:}") String jwkSetUri,
             @Value("${app.oauth2.hmac-secret:}") String hmacSecret) {
         if (!hmacSecret.isBlank()) {
@@ -159,29 +164,47 @@ public class SecurityConfig {
             NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(key)
                     .macAlgorithm(MacAlgorithm.HS256)
                     .build();
-            decoder.setJwtValidator(jwtValidator(issuerUri));
+            decoder.setJwtValidator(jwtValidator(issuerUri, audience));
             return decoder;
         }
 
         if (!jwkSetUri.isBlank()) {
             NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri)
                     .build();
-            decoder.setJwtValidator(jwtValidator(issuerUri));
+            decoder.setJwtValidator(jwtValidator(issuerUri, audience));
             return decoder;
         }
 
         if (!issuerUri.isBlank()) {
-            return JwtDecoders.fromIssuerLocation(issuerUri);
+            NimbusJwtDecoder decoder = (NimbusJwtDecoder)
+                    JwtDecoders.fromIssuerLocation(issuerUri);
+            decoder.setJwtValidator(jwtValidator(issuerUri, audience));
+            return decoder;
         }
 
         throw new IllegalStateException(
                 "OAuth2 is enabled but no issuer URI, JWK set URI, or JWT secret is configured");
     }
 
-    private static OAuth2TokenValidator<Jwt> jwtValidator(String issuerUri) {
-        return issuerUri.isBlank()
+    private static OAuth2TokenValidator<Jwt> jwtValidator(
+            String issuerUri,
+            String audience) {
+        OAuth2TokenValidator<Jwt> issuerValidator = issuerUri.isBlank()
                 ? JwtValidators.createDefault()
                 : JwtValidators.createDefaultWithIssuer(issuerUri);
+        if (audience.isBlank()) {
+            return issuerValidator;
+        }
+
+        OAuth2TokenValidator<Jwt> audienceValidator = token ->
+                token.getAudience().contains(audience)
+                        ? OAuth2TokenValidatorResult.success()
+                        : OAuth2TokenValidatorResult.failure(new OAuth2Error(
+                                "invalid_token",
+                                "The required audience is missing",
+                                null));
+        return new DelegatingOAuth2TokenValidator<>(
+                issuerValidator, audienceValidator);
     }
 
     private static void addRoleAuthorities(
