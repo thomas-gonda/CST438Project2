@@ -42,7 +42,8 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             JwtAuthenticationConverter jwtAuthenticationConverter,
-            @Value("${app.oauth2.enabled:false}") boolean oauth2Enabled) throws Exception {
+            @Value("${app.oauth2.enabled:false}") boolean oauth2Enabled,
+            @Value("${app.auth.basic-enabled:true}") boolean basicAuthEnabled) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> {
@@ -71,8 +72,11 @@ public class SecurityConfig {
                     } else {
                         authorize.anyRequest().permitAll();
                     }
-                })
-                .httpBasic(httpBasic -> { });
+                });
+
+        if (basicAuthEnabled) {
+            http.httpBasic(httpBasic -> { });
+        }
 
         if (oauth2Enabled) {
             http.oauth2ResourceServer(oauth2 -> oauth2

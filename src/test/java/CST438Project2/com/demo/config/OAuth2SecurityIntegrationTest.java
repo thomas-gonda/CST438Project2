@@ -26,7 +26,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {
         "app.oauth2.enabled=true",
         "app.oauth2.issuer-uri=https://issuer.example.test",
-        "app.oauth2.hmac-secret=oauth2-test-signing-secret-32-bytes-long"
+        "app.oauth2.hmac-secret=oauth2-test-signing-secret-32-bytes-long",
+        "app.auth.basic-enabled=false"
 })
 @AutoConfigureMockMvc
 class OAuth2SecurityIntegrationTest {

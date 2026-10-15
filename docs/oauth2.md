@@ -8,6 +8,7 @@ Set these environment variables in a deployed environment:
 OAUTH2_ENABLED=true
 OAUTH2_ISSUER_URI=https://your-identity-provider.example.com/
 OAUTH2_ADMIN_SCOPE=admin
+BASIC_AUTH_ENABLED=false
 ```
 
 The issuer URI is the preferred configuration because Spring Security discovers the provider's signing keys and validates the token issuer. If discovery is unavailable, configure `OAUTH2_JWK_SET_URI` instead. For local or test environments, `OAUTH2_JWT_SECRET` can validate HS256 tokens without contacting an identity provider.
