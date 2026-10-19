@@ -94,6 +94,27 @@ public class UserRepository {
         ).stream().findFirst();
     }
 
+    /**
+     * Finds a user by the email or username represented by the authenticated principal.
+     *
+     * @param email authenticated principal name
+     * @return the matching user, when one exists
+     */
+    public Optional<User> findByEmail(String email) {
+        return jdbcTemplate.query(
+                """
+                SELECT "id", "displayName", "email", "role"
+                FROM "USER"
+                WHERE "email" = ?
+                """,
+                (rs, rowNum) -> new User(
+                        rs.getLong("id"),
+                        rs.getString("displayName"),
+                        rs.getString("email"),
+                        rs.getString("role")),
+                email).stream().findFirst();
+    }
+
     public Optional<User> update(
             Long userId,
             String displayName,
