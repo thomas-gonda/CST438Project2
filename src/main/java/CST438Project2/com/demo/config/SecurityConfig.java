@@ -29,10 +29,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/games/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/games/*").hasRole("ADMIN")
 
-                        .requestMatchers(HttpMethod.POST, "/reviews").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/games/*/reviews").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/games/*/reviews").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/reviews/*").permitAll()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/reviews/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/reviews/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/reviews/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/me/reviews").authenticated()
 
                         .requestMatchers(HttpMethod.POST, "/api/v1/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/users", "/api/v1/users/*").hasRole("ADMIN")
