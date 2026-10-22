@@ -1,5 +1,8 @@
 package CST438Project2.com.demo.config;
 
+import CST438Project2.com.demo.model.Game;
+import CST438Project2.com.demo.repository.GameRepository;
+import CST438Project2.com.demo.repository.UserRepository;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,12 +19,14 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = {
@@ -40,6 +45,12 @@ class OAuth2SecurityIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private GameRepository gameRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Test
     void validAdminBearerTokenCanAccessAdminEndpoint() throws Exception {
@@ -114,6 +125,55 @@ class OAuth2SecurityIntegrationTest {
     void publicGameCatalogRemainsAccessibleWithoutBearerToken() throws Exception {
         mockMvc.perform(get("/api/v1/games"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void validBearerTokenCanCreateReviewAndProvisionEmailUser() throws Exception {
+        Game game = gameRepository.save(new Game(
+                null,
+                "OAuth Review Game",
+                "OAuth Publisher",
+                "Action",
+                new BigDecimal("19.99")
+        ));
+
+        mockMvc.perform(post("/api/v1/games/{gameId}/reviews", game.getId())
+                        .header(HttpHeaders.AUTHORIZATION,
+                                bearerToken("profile", "auth0-user@example.com",
+                                        Instant.now().plusSeconds(300)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comment\":\"Works with Auth0\",\"rating\":4.5}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.comment").value("Works with Auth0"))
+                .andExpect(jsonPath("$.gameId").value(game.getId()))
+                .andExpect(jsonPath("$.userId").isNumber());
+
+        org.junit.jupiter.api.Assertions.assertTrue(
+                userRepository.findByEmail("auth0-user@example.com").isPresent());
+    }
+
+    @Test
+    void validBearerTokenCanCreateReviewWithoutEmailClaim() throws Exception {
+        Game game = gameRepository.save(new Game(
+                null,
+                "Subject Review Game",
+                "OAuth Publisher",
+                "Action",
+                new BigDecimal("29.99")
+        ));
+
+        mockMvc.perform(post("/api/v1/games/{gameId}/reviews", game.getId())
+                        .header(HttpHeaders.AUTHORIZATION,
+                                bearerToken("profile", Instant.now().plusSeconds(300)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comment\":\"Works with subject fallback\",\"rating\":4.0}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.comment").value("Works with subject fallback"))
+                .andExpect(jsonPath("$.gameId").value(game.getId()))
+                .andExpect(jsonPath("$.userId").isNumber());
+
+        org.junit.jupiter.api.Assertions.assertTrue(
+                userRepository.findByEmail("oauth-test-user").isPresent());
     }
 
     private static String bearerToken(String scope, Instant expiresAt) {
