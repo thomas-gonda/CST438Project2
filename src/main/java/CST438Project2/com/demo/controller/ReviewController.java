@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -224,7 +225,55 @@ public class ReviewController {
         if (authentication == null || !authentication.isAuthenticated()) {
             return Optional.empty();
         }
-        return userRepository.findByEmail(authentication.getName());
+
+        String identity = authentication.getName();
+        String displayName = identity;
+
+        if (authentication.getPrincipal() instanceof Jwt jwt) {
+            identity = firstNonBlank(
+                    jwt.getClaimAsString("email"),
+                    jwt.getSubject(),
+                    identity
+            );
+            displayName = firstNonBlank(
+                    jwt.getClaimAsString("name"),
+                    jwt.getClaimAsString("nickname"),
+                    jwt.getClaimAsString("preferred_username"),
+                    identity
+            );
+        }
+
+        if (identity == null || identity.isBlank()) {
+            return Optional.empty();
+        }
+
+        String databaseIdentity = identity.trim();
+        Optional<User> existing = userRepository.findByEmail(databaseIdentity);
+        if (existing.isPresent()) {
+            return existing;
+        }
+
+        // Auth0 users do not necessarily exist in the application's USER table.
+        // Provision the authenticated user on first use so a valid bearer token
+        // is not turned into a second, misleading 401 response.
+        User provisioned = new User(
+                null,
+                displayName == null || displayName.isBlank()
+                        ? databaseIdentity
+                        : displayName.trim(),
+                databaseIdentity,
+                "USER"
+        );
+        return Optional.of(userRepository.save(provisioned));
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 
     /**

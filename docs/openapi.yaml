@@ -1,5 +1,4 @@
-# Starter OpenAPI contract for CST 438 Project 02.
-# Copy to docs/openapi.yaml in your repo, then replace Workout/Exercise with YOUR resources.
+# OpenAPI contract for the CST 438 Project 02 GameReview API.
 # Render it:   https://editor.swagger.io  (File > Import file, or paste)
 # Lint it:     npx @redocly/cli lint docs/openapi.yaml
 # Mock it:     npx @stoplight/prism-cli mock docs/openapi.yaml   -> http://127.0.0.1:4010
@@ -11,6 +10,8 @@ info:
   description: |
     Allows users to review and rate games that the admin adds, Anybody who plays video games, It would mean users could review and rate games on the client application.
     Every error uses RFC 9457 Problem Details (see components/schemas/Problem).
+    Protected operations use OAuth 2.0 bearer JWTs validated by the API's
+    configured resource-server issuer or JWK set.
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
@@ -66,7 +67,7 @@ paths:
       operationId: createGame
       summary: Add a game to the catalog
       security:
-        - basicAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -395,12 +396,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT from the OAuth2 Authorization Code + PKCE flow (with Google, send the ID token; Google's access_token is opaque).
-    basicAuth:
-      type: http
-      scheme: basic
-      description: Local admin authentication used by the game creation endpoint until OAuth is connected.
-
+      description: OAuth 2.0 bearer JWT issued by Auth0.
   parameters:
     GameId:
       name: gameId

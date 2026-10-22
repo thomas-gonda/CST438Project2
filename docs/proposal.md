@@ -55,11 +55,11 @@ erDiagram
 
 ## 5. Technical choices
 - **Database host:** Supabase because it is easily accessible
-- **OAuth2 provider:** Google
+- **OAuth2 provider:** Auth0
 - **Repo layout:** Split because it will make sure we are only touching one component at a time.
 
 ## 6. Risks
-Google OAuth is going to be new to everyone. I would assume that something is going to go wrong, especially on how to determine what the users role will be if they login through email.
+Auth0 OAuth is going to be new to everyone. I would assume that something is going to go wrong, especially on how to determine what the users role will be if they login through email.
 The relationship between reviews and games/users is slightly different because they can both have many reviews but each review can only have one game and one user.
 
 ## 7. Team and Sprint 1
