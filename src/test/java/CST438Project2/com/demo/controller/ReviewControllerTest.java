@@ -2,7 +2,11 @@
 package CST438Project2.com.demo.controller;
 
 import CST438Project2.com.demo.model.Review;
+import CST438Project2.com.demo.model.Game;
+import CST438Project2.com.demo.model.User;
+import CST438Project2.com.demo.repository.GameRepository;
 import CST438Project2.com.demo.repository.ReviewRepository;
+import CST438Project2.com.demo.repository.UserRepository;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,12 +16,16 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -31,17 +39,31 @@ class ReviewControllerTest {
     @Autowired
     private ReviewRepository reviewRepository;
 
+    @Autowired
+    private GameRepository gameRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void reviewCanBeCreated() throws Exception {
-        mockMvc.perform(post("/reviews")
+        User user = userRepository.findByEmail("user").orElseGet(() ->
+                userRepository.save(new User(
+                        null, "Review User", "user", "USER")));
+        Game game = gameRepository.save(new Game(
+                null, "Review Game", "Publisher", "Action",
+                new BigDecimal("10.00")));
+
+        mockMvc.perform(post("/api/v1/games/{gameId}/reviews", game.getId())
+                        .with(httpBasic("user", "user-password"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(reviewJson("Great game!")))
+                        .content("{\"comment\":\"Great game!\",\"rating\":4.5}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.comment").value("Great game!"))
                 .andExpect(jsonPath("$.rating").value(4.5))
-                .andExpect(jsonPath("$.userId").value(2))
-                .andExpect(jsonPath("$.gameId").value(1));
+                .andExpect(jsonPath("$.userId").value(user.getId()))
+                .andExpect(jsonPath("$.gameId").value(game.getId()));
     }
 
     @Test
@@ -102,10 +124,10 @@ class ReviewControllerTest {
         mockMvc.perform(get("/api/v1/games/{gameId}/reviews", 1))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(
-                        "$[?(@.id == " + review.getId() + ")]"
+                        "$.content[?(@.id == " + review.getId() + ")]"
                 ).isNotEmpty())
                 .andExpect(jsonPath(
-                        "$[?(@.comment == 'Game review test')]"
+                        "$.content[?(@.comment == 'Game review test')]"
                 ).isNotEmpty());
     }
 
@@ -117,10 +139,15 @@ class ReviewControllerTest {
 
     @Test
     void gameWithNoReviewsReturnsEmptyList() throws Exception {
-        mockMvc.perform(get("/api/v1/games/999999999/reviews"))
+        Game game = gameRepository.save(new Game(
+                null, "No Review Game", "Publisher", "Puzzle",
+                new BigDecimal("10.00")));
+
+        mockMvc.perform(get("/api/v1/games/{gameId}/reviews", game.getId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$").isEmpty());
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.page.totalElements").value(0));
     }
 
     @Test
@@ -162,149 +189,257 @@ class ReviewControllerTest {
         );
     }
 
-    private static String reviewJson(String comment) {
-        return """
-                {
-                  "reviewDate": "2026-10-06",
-                  "comment": "%s",
-                  "rating": 4.5,
-                  "userId": 2,
-                  "gameId": 1
-                }
-                """.formatted(comment);
-    }
-
-    // creates a review for testing
-    private Review createTestReview() {
-        return reviewRepository.save(new Review(
+    @Test
+    void adminCanUpdateReview() throws Exception {
+        Review review = reviewRepository.save(new Review(
                 null,
                 LocalDate.of(2026, 10, 6),
-                "Original review",
+                "Before update",
                 3.0f,
                 2L,
                 1L
         ));
-    }
-    // tests updating both the comment and rating.
-    @Test
-    void userCanUpdateReview() throws Exception {
-        Review review = createTestReview();
 
-        mockMvc.perform(patch("/api/v1/reviews/{reviewId}", review.getId())
+        Long id = review.getId();
+
+        mockMvc.perform(patch("/api/v1/reviews/{reviewId}", id)
+                        .with(httpBasic("admin", "admin-password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
-                                "comment": "Updated review",
-                                "rating": 5.0
+                              "comment": "After update",
+                              "rating": 5.0
                             }
                             """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.comment").value("Updated review"))
+                .andExpect(jsonPath("$.comment").value("After update"))
                 .andExpect(jsonPath("$.rating").value(5.0));
 
-        Review updated = reviewRepository.findById(review.getId()).orElseThrow();
+        Review updated = reviewRepository.findById(id).orElseThrow();
 
-        assertEquals("Updated review", updated.getComment());
+        assertEquals("After update", updated.getComment());
         assertEquals(5.0f, updated.getRating());
     }
-    // tests updating only the rating
-    @Test
-    void userCanUpdateOnlyRating() throws Exception {
-        Review review = createTestReview();
 
-        mockMvc.perform(patch("/api/v1/reviews/{reviewId}", review.getId())
+    @Test
+    void adminCanPatchOnlyComment() throws Exception {
+        Review review = reviewRepository.save(new Review(
+                null,
+                LocalDate.of(2026, 10, 6),
+                "Original comment",
+                4.0f,
+                2L,
+                1L
+        ));
+
+        Long id = review.getId();
+
+        mockMvc.perform(patch("/api/v1/reviews/{reviewId}", id)
+                        .with(httpBasic("admin", "admin-password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
-                                "rating": 4.5
+                              "comment": "Updated comment"
                             }
                             """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.comment").value("Original review"))
+                .andExpect(jsonPath("$.comment").value("Updated comment"))
+                .andExpect(jsonPath("$.rating").value(4.0));
+    }
+
+    @Test
+    void adminCanPatchOnlyRating() throws Exception {
+        Review review = reviewRepository.save(new Review(
+                null,
+                LocalDate.of(2026, 10, 6),
+                "Keep comment",
+                3.0f,
+                2L,
+                1L
+        ));
+
+        Long id = review.getId();
+
+        mockMvc.perform(patch("/api/v1/reviews/{reviewId}", id)
+                        .with(httpBasic("admin", "admin-password"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "rating": 4.5
+                            }
+                            """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comment").value("Keep comment"))
                 .andExpect(jsonPath("$.rating").value(4.5));
-
-        Review updated = reviewRepository.findById(review.getId()).orElseThrow();
-
-        assertEquals("Original review", updated.getComment());
-        assertEquals(4.5f, updated.getRating());
     }
-    // tests updating only the comment
+
     @Test
-    void userCanUpdateOnlyComment() throws Exception {
-        Review review = createTestReview();
-
-        mockMvc.perform(patch("/api/v1/reviews/{reviewId}", review.getId())
+    void unauthenticatedRequestsCannotPatchReviews() throws Exception {
+        mockMvc.perform(patch("/api/v1/reviews/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                            {
-                                "comment": "Changed my opinion"
-                            }
-                            """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.comment").value("Changed my opinion"))
-                .andExpect(jsonPath("$.rating").value(3.0));
-
-        Review updated = reviewRepository.findById(review.getId()).orElseThrow();
-
-        assertEquals("Changed my opinion", updated.getComment());
-        assertEquals(3.0f, updated.getRating());
+                        .content("{\"comment\":\"No\"}"))
+                .andExpect(status().isUnauthorized());
     }
-    // tests updating a review that does not exist
+
     @Test
-    void updatingNonexistentReviewReturnsNotFound() throws Exception {
-        mockMvc.perform(patch("/api/v1/reviews/{reviewId}", 999999999L)
+    void regularUserCannotPatchReviews() throws Exception {
+        mockMvc.perform(patch("/api/v1/reviews/1")
+                        .with(httpBasic("user", "user-password"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                            {
-                                "rating": 5.0
-                            }
-                            """))
+                        .content("{\"comment\":\"No\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void missingReviewCannotBeUpdated() throws Exception {
+        mockMvc.perform(patch("/api/v1/reviews/999999999")
+                        .with(httpBasic("admin", "admin-password"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comment\":\"Missing\"}"))
                 .andExpect(status().isNotFound());
     }
-    // tests rejecting an empty update request
-    @Test
-    void emptyReviewUpdateReturnsBadRequest() throws Exception {
-        Review review = createTestReview();
 
-        mockMvc.perform(patch("/api/v1/reviews/{reviewId}", review.getId())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isBadRequest());
-    }
-    // tests rejecting an invalid rating
     @Test
-    void invalidRatingReturnsBadRequest() throws Exception {
-        Review review = createTestReview();
+    void invalidPatchReturnsBadRequest() throws Exception {
+        Review review = reviewRepository.save(new Review(
+                null,
+                LocalDate.of(2026, 10, 6),
+                "Valid review",
+                4.0f,
+                2L,
+                1L
+        ));
 
-        mockMvc.perform(patch("/api/v1/reviews/{reviewId}", review.getId())
+        Long id = review.getId();
+
+        mockMvc.perform(patch("/api/v1/reviews/{reviewId}", id)
+                        .with(httpBasic("admin", "admin-password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                             {
-                                "rating": "excellent"
+                              "comment": "Invalid update",
+                              "gameId": 999
                             }
                             """))
                 .andExpect(status().isBadRequest());
 
-        Review unchanged = reviewRepository.findById(review.getId()).orElseThrow();
+        Review unchanged = reviewRepository.findById(id).orElseThrow();
 
-        assertEquals(3.0f, unchanged.getRating());
+        assertEquals("Valid review", unchanged.getComment());
     }
-    // tests rejecting updates to fields other than comment and rating
+
     @Test
-    void cannotUpdateReviewUserId() throws Exception {
-        Review review = createTestReview();
+    void authenticatedUserCanCreateReviewForGameWithoutSupplyingUserId()
+            throws Exception {
+        User user = userRepository.findByEmail("user").orElseGet(() ->
+                userRepository.save(new User(
+                        null, "Local User", "user", "USER")));
+        Game game = gameRepository.save(new Game(
+                null, "Create Review Game", "Publisher", "Action",
+                new BigDecimal("10.00")));
 
-        mockMvc.perform(patch("/api/v1/reviews/{reviewId}", review.getId())
+        mockMvc.perform(post("/api/v1/games/{gameId}/reviews", game.getId())
+                        .with(httpBasic("user", "user-password"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                            {
-                                "userId": 10
-                            }
-                            """))
-                .andExpect(status().isBadRequest());
-
-        Review unchanged = reviewRepository.findById(review.getId()).orElseThrow();
-
-        assertEquals(2L, unchanged.getUserId());
+                        .content("{\"comment\":\"Owned review\",\"rating\":4.5}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userId").value(user.getId()))
+                .andExpect(jsonPath("$.gameId").value(game.getId()))
+                .andExpect(jsonPath("$.comment").value("Owned review"));
     }
+
+    @Test
+    void reviewCreationRejectsMissingGame() throws Exception {
+        mockMvc.perform(post("/api/v1/games/9223372036854775807/reviews")
+                        .with(httpBasic("user", "user-password"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comment\":\"Missing\",\"rating\":4}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void reviewCreationRejectsInvalidRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/games/1/reviews")
+                        .with(httpBasic("user", "user-password"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comment\":\"\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void adminCanDeleteReview() throws Exception {
+        Review review = reviewRepository.save(new Review(
+                null, LocalDate.of(2026, 10, 6), "Delete me", 3.0f, 2L, 1L));
+
+        mockMvc.perform(delete("/api/v1/reviews/{reviewId}", review.getId())
+                        .with(httpBasic("admin", "admin-password")))
+                .andExpect(status().isNoContent());
+
+        assertTrue(reviewRepository.findById(review.getId()).isEmpty());
+    }
+
+    @Test
+    void deletingMissingReviewReturnsNotFound() throws Exception {
+        mockMvc.perform(delete("/api/v1/reviews/9223372036854775807")
+                        .with(httpBasic("admin", "admin-password")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void adminCanPutFullReviewRepresentation() throws Exception {
+        Review review = reviewRepository.save(new Review(
+                null, LocalDate.of(2026, 10, 6), "Before PUT", 3.0f, 2L, 1L));
+
+        mockMvc.perform(put("/api/v1/reviews/{reviewId}", review.getId())
+                        .with(httpBasic("admin", "admin-password"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comment\":\"After PUT\",\"rating\":5}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comment").value("After PUT"))
+                .andExpect(jsonPath("$.rating").value(5.0));
+    }
+
+    @Test
+    void putRequiresBothEditableFields() throws Exception {
+        mockMvc.perform(put("/api/v1/reviews/1")
+                        .with(httpBasic("admin", "admin-password"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comment\":\"Incomplete PUT\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void authenticatedUserCanListOnlyTheirReviewsWithPagination()
+            throws Exception {
+        User user = userRepository.findByEmail("user").orElseGet(() ->
+                userRepository.save(new User(
+                        null, "Pagination User", "user", "USER")));
+        long existingReviews = reviewRepository.countByUserId(user.getId());
+        reviewRepository.save(new Review(
+                null, LocalDate.of(2026, 10, 6), "Mine 1", 4.0f,
+                user.getId(), 1L));
+        reviewRepository.save(new Review(
+                null, LocalDate.of(2026, 10, 6), "Mine 2", 4.0f,
+                user.getId(), 1L));
+        reviewRepository.save(new Review(
+                null, LocalDate.of(2026, 10, 6), "Other", 4.0f, 2L, 1L));
+
+        mockMvc.perform(get("/api/v1/users/me/reviews")
+                        .with(httpBasic("user", "user-password"))
+                        .param("page", "0")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.page.totalElements")
+                        .value(existingReviews + 2))
+                .andExpect(jsonPath("$.content[?(@.comment == 'Other')]").isEmpty());
+    }
+
+    @Test
+    void unauthenticatedUserCannotListMyReviews() throws Exception {
+        mockMvc.perform(get("/api/v1/users/me/reviews"))
+                .andExpect(status().isUnauthorized());
+    }
+
 }

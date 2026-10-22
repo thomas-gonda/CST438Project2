@@ -1,3 +1,4 @@
+
 package CST438Project2.com.demo.config;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -66,6 +67,28 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.PATCH, "/api/v1/games/*")
                             .hasRole("ADMIN")
                             .requestMatchers(HttpMethod.DELETE, "/api/v1/games/*")
+                            .hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.POST,
+                                    "/api/v1/games/*/reviews")
+                            .authenticated()
+                            .requestMatchers(HttpMethod.PATCH, "/api/v1/reviews/*")
+                            .hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.PUT, "/api/v1/reviews/*")
+                            .hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.DELETE, "/api/v1/reviews/*")
+                            .hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.GET,
+                                    "/api/v1/users/me/reviews")
+                            .authenticated()
+                            .requestMatchers(HttpMethod.POST, "/api/v1/users")
+                            .hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.GET,
+                                    "/api/v1/users",
+                                    "/api/v1/users/*")
+                            .hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.PATCH, "/api/v1/users/*")
+                            .hasRole("ADMIN")
+                            .requestMatchers(HttpMethod.DELETE, "/api/v1/users/*")
                             .hasRole("ADMIN");
 
                     if (!oauth2Enabled) {
