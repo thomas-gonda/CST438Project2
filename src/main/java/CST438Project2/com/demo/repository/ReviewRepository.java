@@ -11,6 +11,9 @@ import java.sql.PreparedStatement;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Reads and writes reviews in the database.
+ */
 @Repository
 public class ReviewRepository {
 
@@ -20,6 +23,12 @@ public class ReviewRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * Saves a new review.
+     *
+     * @param review review to save
+     * @return the saved review with its generated id
+     */
     public Review save(Review review) {
         String sql = """
             INSERT INTO "REVIEW"
@@ -61,7 +70,11 @@ public class ReviewRepository {
         );
     }
 
-    // updates a review's comment and rating in the database
+    /**
+     * Updates a review's editable fields.
+     *
+     * @param review review containing the new values
+     */
     public void update(Review review) {
         String sql = """
         UPDATE "REVIEW"
@@ -77,6 +90,12 @@ public class ReviewRepository {
         );
     }
 
+    /**
+     * Finds all reviews for a game.
+     *
+     * @param gameId game id to search for
+     * @return reviews belonging to the game
+     */
     public List<Review> findByGameId(Long gameId) {
         String sql = """
             SELECT "id", "reviewDate", "comment", "rating", "userId", "gameId"
@@ -172,6 +191,12 @@ public class ReviewRepository {
                 "DELETE FROM \"REVIEW\" WHERE \"id\" = ?", reviewId);
     }
 
+    /**
+     * Finds one review by id.
+     *
+     * @param reviewId review id to find
+     * @return the review when it exists
+     */
     public Optional<Review> findById(Long reviewId) {
         String sql = """
             SELECT "id", "reviewDate", "comment", "rating", "userId", "gameId"

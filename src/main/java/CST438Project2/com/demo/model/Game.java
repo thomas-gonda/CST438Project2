@@ -2,6 +2,9 @@ package CST438Project2.com.demo.model;
 
 import java.math.BigDecimal;
 
+/**
+ * Represents a game in the catalog.
+ */
 public class Game {
 
     private Long id;

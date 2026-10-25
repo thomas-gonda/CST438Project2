@@ -12,6 +12,9 @@ import java.sql.PreparedStatement;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Reads and writes users in the database.
+ */
 @Repository
 public class UserRepository {
 
@@ -21,6 +24,12 @@ public class UserRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * Saves a new user.
+     *
+     * @param user user to save
+     * @return the saved user with its generated id
+     */
     public User save(User user) {
         String sql = """
             INSERT INTO "USER" ("displayName", "email", "role")
@@ -57,6 +66,11 @@ public class UserRepository {
         );
     }
 
+    /**
+     * Finds all users.
+     *
+     * @return all users ordered by id
+     */
     public List<User> findAll() {
         String sql = """
             SELECT "id", "displayName", "email", "role"
@@ -75,6 +89,12 @@ public class UserRepository {
         );
     }
 
+    /**
+     * Finds one user by id.
+     *
+     * @param userId user id to find
+     * @return the user when it exists
+     */
     public Optional<User> findById(Long userId) {
         String sql = """
             SELECT "id", "displayName", "email", "role"
@@ -115,6 +135,15 @@ public class UserRepository {
                 email).stream().findFirst();
     }
 
+    /**
+     * Updates a user's editable fields.
+     *
+     * @param userId user id to update
+     * @param displayName new display name
+     * @param email new email
+     * @param role new role
+     * @return the updated user, or empty when it does not exist
+     */
     public Optional<User> update(
             Long userId,
             String displayName,
@@ -158,6 +187,12 @@ public class UserRepository {
         return Optional.of(user);
     }
 
+    /**
+     * Deletes a user by id.
+     *
+     * @param userId user id to delete
+     * @return true when a user was deleted
+     */
     public boolean deleteById(Long userId) {
         String sql = """
             DELETE FROM "USER"

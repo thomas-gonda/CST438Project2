@@ -1,5 +1,8 @@
 package CST438Project2.com.demo.model;
 
+/**
+ * Represents a user stored by the API.
+ */
 public class User {
 
     private Long id;
