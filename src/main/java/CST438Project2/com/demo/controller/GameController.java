@@ -8,6 +8,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -59,6 +61,8 @@ public class GameController {
      * @return games and pagination information
      */
     @GetMapping
+    @Operation(summary = "List games")
+    @ApiResponse(responseCode = "200", description = "Games returned")
     public GamePage listGames(
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
@@ -72,6 +76,8 @@ public class GameController {
      * @return the game when found, or a problem response when missing
      */
     @GetMapping("/{gameId}")
+    @Operation(summary = "Get a game by id")
+    @ApiResponse(responseCode = "200", description = "Game returned")
     public ResponseEntity<?> getGameById(
             @PathVariable("gameId") Long gameId) {
 
@@ -92,6 +98,8 @@ public class GameController {
      */
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Create a game")
+    @ApiResponse(responseCode = "201", description = "Game created")
     public ResponseEntity<Game> addGame(@Valid @RequestBody GameRequest request) {
         Game game = gameRepository.save(new Game(
                 null,
@@ -112,6 +120,8 @@ public class GameController {
      */
     @PatchMapping("/{gameId}")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Update a game")
+    @ApiResponse(responseCode = "200", description = "Game updated")
     public ResponseEntity<Game> updateGame(
             @PathVariable Long gameId,
             @RequestBody GameUpdateRequest request) {
@@ -145,6 +155,8 @@ public class GameController {
      */
     @DeleteMapping("/{gameId}")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete a game")
+    @ApiResponse(responseCode = "204", description = "Game deleted")
     public ResponseEntity<?> deleteGame(@PathVariable Long gameId) {
         if (gameRepository.deleteById(gameId)) {
             return ResponseEntity.noContent().build();

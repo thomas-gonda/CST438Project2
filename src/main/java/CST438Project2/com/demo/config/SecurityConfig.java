@@ -41,6 +41,9 @@ import java.util.Set;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
+/**
+ * Configures basic authentication and OAuth2 resource-server security.
+ */
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
@@ -55,6 +58,11 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> {
                     authorize
+                            .requestMatchers(
+                                    "/swagger-ui.html",
+                                    "/swagger-ui/**",
+                                    "/v3/api-docs/**")
+                            .permitAll()
                             .requestMatchers(HttpMethod.GET,
                                     "/api/v1/games",
                                     "/api/v1/games/*",

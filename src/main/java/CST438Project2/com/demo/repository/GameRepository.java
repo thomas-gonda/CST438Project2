@@ -12,6 +12,9 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Reads and writes games in the database.
+ */
 @Repository
 public class GameRepository {
 
@@ -21,6 +24,12 @@ public class GameRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * Saves a new game.
+     *
+     * @param game game to save
+     * @return the saved game with its generated id
+     */
     public Game save(Game game) {
         String sql = """
                 INSERT INTO "GAME" ("name", "publisher", "category", "price")
@@ -46,6 +55,11 @@ public class GameRepository {
                 game.getCategory(), game.getPrice());
     }
 
+    /**
+     * Finds every game.
+     *
+     * @return all games ordered by id
+     */
     public List<Game> findAll() {
         return jdbcTemplate.query("""
                         SELECT "id", "name", "publisher", "category", "price"
@@ -106,6 +120,16 @@ public class GameRepository {
                 .stream().findFirst();
     }
 
+    /**
+     * Updates the fields supplied for a game.
+     *
+     * @param id game id to update
+     * @param name new game name
+     * @param publisher new publisher
+     * @param category new category
+     * @param price new price
+     * @return the updated game, or empty when it does not exist
+     */
     public Optional<Game> update(
             Long id,
             String name,

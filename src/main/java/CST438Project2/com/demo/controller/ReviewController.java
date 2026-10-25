@@ -12,6 +12,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -70,6 +72,8 @@ public class ReviewController {
      * @return the created review
      */
     @PostMapping("/api/v1/games/{gameId}/reviews")
+    @Operation(summary = "Create a review for a game")
+    @ApiResponse(responseCode = "201", description = "Review created")
     public ResponseEntity<?> createReviewForGame(@PathVariable Long gameId,
             @Valid @RequestBody ReviewCreateRequest request,
             Authentication authentication) {
@@ -100,6 +104,8 @@ public class ReviewController {
      * @return a paginated review response
      */
     @GetMapping("/api/v1/games/{gameId}/reviews")
+    @Operation(summary = "List reviews for a game")
+    @ApiResponse(responseCode = "200", description = "Reviews returned")
     public ResponseEntity<ReviewPage> getReviewsByGameId(@PathVariable Long gameId,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
@@ -118,6 +124,8 @@ public class ReviewController {
      * @return a paginated review response
      */
     @GetMapping("/api/v1/users/me/reviews")
+    @Operation(summary = "List the signed-in user's reviews")
+    @ApiResponse(responseCode = "200", description = "Reviews returned")
     public ResponseEntity<ReviewPage> getMyReviews(
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size,
@@ -133,6 +141,8 @@ public class ReviewController {
      * @return the review when it exists
      */
     @GetMapping("/api/v1/reviews/{reviewId}")
+    @Operation(summary = "Get a review by id")
+    @ApiResponse(responseCode = "200", description = "Review returned")
     public ResponseEntity<Review> getReviewById(@PathVariable Long reviewId) {
         return reviewRepository.findById(reviewId).map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -147,6 +157,8 @@ public class ReviewController {
      */
     @DeleteMapping("/api/v1/reviews/{reviewId}")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete a review")
+    @ApiResponse(responseCode = "204", description = "Review deleted")
     public ResponseEntity<Void> deleteReview(@PathVariable Long reviewId) {
         if (reviewRepository.findById(reviewId).isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -164,6 +176,8 @@ public class ReviewController {
      */
     @PutMapping("/api/v1/reviews/{reviewId}")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Replace a review")
+    @ApiResponse(responseCode = "200", description = "Review replaced")
     public ResponseEntity<Review> replaceReview(@PathVariable Long reviewId,
             @Valid @RequestBody ReviewReplaceRequest request) {
         Optional<Review> existing = reviewRepository.findById(reviewId);
@@ -186,6 +200,8 @@ public class ReviewController {
      */
     @PatchMapping("/api/v1/reviews/{reviewId}")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Update part of a review")
+    @ApiResponse(responseCode = "200", description = "Review updated")
     public ResponseEntity<Review> updateReview(@PathVariable Long reviewId,
             @RequestBody Map<String, Object> updates) {
         Optional<Review> existing = reviewRepository.findById(reviewId);

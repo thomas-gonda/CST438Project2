@@ -2,6 +2,9 @@ package CST438Project2.com.demo.model;
 
 import java.time.LocalDate;
 
+/**
+ * Represents a review written for a game.
+ */
 public class Review {
 
     private Long id;
