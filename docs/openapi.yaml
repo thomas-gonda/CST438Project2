@@ -20,10 +20,8 @@ info:
     url: https://github.com/thomas-gonda/CST438Project2
 
 servers:
-  - url: http://localhost:8080
-    description: Local (docker compose up)
-  - url: https://your-api.example.com
-    description: Production (replace in Sprint 3)
+  - url: https://gamereview-api-gqbj.onrender.com
+    description: Production
 
 # Every endpoint requires a Bearer token unless it overrides this with `security: []`.
 security:
