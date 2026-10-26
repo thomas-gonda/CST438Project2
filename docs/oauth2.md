@@ -2,6 +2,44 @@
 
 The API acts as an OAuth 2.0 resource server using Auth0. When enabled, it validates Auth0 bearer JWTs before protected requests reach the controllers. The existing public game-catalog routes remain public.
 
+## OAuth 2.0 request sequence
+
+The Android client uses Auth0 for sign-in. The Auth0 SDK performs the authorization-code flow with PKCE and returns an access token to the app. The Render API acts as the resource server: it validates the token before allowing a protected request to reach a controller.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant App as Android app
+    participant Auth0 as Auth0
+    participant API as Render API
+    participant DB as Supabase database
+
+    User->>App: Tap Log in
+    App->>Auth0: Authorization request with PKCE
+    Auth0-->>User: Display login and consent
+    User->>Auth0: Authenticate
+    Auth0-->>App: Authorization code through app callback
+    App->>Auth0: Exchange code and PKCE verifier
+    Auth0-->>App: Access token (JWT)
+
+    App->>API: Protected request with Bearer token
+    API->>Auth0: Retrieve signing keys when needed
+    Auth0-->>API: JWKS public keys
+    API->>API: Validate signature, issuer, audience, and expiry
+    API->>API: Convert scopes or roles to authorities
+
+    alt Token is missing or invalid
+        API-->>App: 401 Unauthorized
+    else Token is valid
+        API->>DB: Execute the authorized operation
+        DB-->>API: Return data or saved result
+        API-->>App: 2xx response
+        App-->>User: Display the result
+    end
+```
+
+The API does not contact Auth0 for every request; signing keys are retrieved as needed and cached by the JWT decoder. For a review submission, the API also resolves the authenticated Auth0 email or subject to the application's `USER` row before saving the review. Public game-catalog requests can skip the token steps.
+
 Set these environment variables in a deployed environment:
 
 ```text
